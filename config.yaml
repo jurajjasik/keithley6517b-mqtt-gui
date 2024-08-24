@@ -1,0 +1,5 @@
+topic_base: "keithley6517b"
+device_name: "Keithley6517B"
+mqtt_broker: "localhost"
+mqtt_port: 1883
+mqtt_connection_timeout: 60
