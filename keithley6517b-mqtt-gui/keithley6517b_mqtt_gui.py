@@ -1,77 +1,121 @@
-import paho.mqtt.client as mqtt
-
-from PyQt5.QtWidgets import QMainWindow, QGridLayout, QLabel, QLineEdit, QPushButton, QCheckBox, QComboBox, QDoubleSpinBox, QSpinBox, QGroupBox, QFormLayout, QVBoxLayout, QHBoxLayout, QRadioButton, QButtonGroup, QSlider, QLCDNumber, QProgressBar, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QFileDialog, QMessageBox
-from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
-from PyQt5.QtGui import QIcon
-
-import time
-import os
 import json
 import logging
+import os
+import time
+
+from PyQt5.QtCore import Qt, QThread, QTimer, pyqtSignal
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QWidget  # Add this line to import QWidget
+from PyQt5.QtWidgets import (
+    QAbstractItemView,
+    QButtonGroup,
+    QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
+    QFileDialog,
+    QFormLayout,
+    QFrame,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLCDNumber,
+    QLineEdit,
+    QMainWindow,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QRadioButton,
+    QSlider,
+    QSpinBox,
+    QStatusBar,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+)
+
+from .keithley6517b_mqtt_client_logic import Keithley6517B_MQTTClientLogic
+
+
+# Initialize status bar with pernament widgets
+# see: https://stackoverflow.com/questions/57943862/pyqt5-statusbar-separators
+class StatusBarLogic:
+    def __init__(self, statusBar):
+        self.statusBar = statusBar
+
+        class VLine(QFrame):
+            # a simple VLine, like the one you get from designer
+            def __init__(self):
+                super(VLine, self).__init__()
+                self.setFrameShape(self.VLine | self.Sunken)
+
+        # self.statusBar.showMessage("bla-bla bla")
+
+        self.lbl_device = QLabel("Keithley: disconnected")
+        # self.lbl_device.setStyleSheet('border: 0; color:  red;')
+
+        self.lbl_mqtt = QLabel("MQTT: disconnected")
+        # self.lbl_mqtt.setStyleSheet('border: 0; color:  red;')
+
+        # self.statusBar.reformat()
+        # self.statusBar.setStyleSheet('border: 0; background-color: #FFF8DC;')
+        # self.statusBar.setStyleSheet("QStatusBar::item {border: none;}")
+
+        self.statusBar.addPermanentWidget(VLine())  # <---
+        self.statusBar.addPermanentWidget(self.lbl_device)
+        self.statusBar.addPermanentWidget(VLine())  # <---
+        self.statusBar.addPermanentWidget(self.lbl_mqtt)
+        self.statusBar.addPermanentWidget(VLine())  # <---
+
+    def set_device_status(self, status):
+        self.lbl_device.setText(f"Keithley: {status}")
+
+    def set_mqtt_status(self, status):
+        self.lbl_mqtt.setText(f"MQTT: {status}")
+
 
 class Keithley6517B_MQTT_GUI(QMainWindow):
-    def __init__(self):
+    def __init__(self, config):
         super().__init__()
 
         self.setWindowTitle("Keithley 6517B MQTT GUI")
         self.setWindowIcon(QIcon("icon.png"))
 
-        self.client = mqtt.Client()
-        self.client.on_connect = self.on_connect
-        self.client.on_message = self.on_message
-
-        self.client.connect("localhost", 1883, 60)
-        self.client.loop_start()
-
         self.init_ui()
 
+        self.client_logic = Keithley6517B_MQTTClientLogic(config)
+        self.client_logic.start()
+
     def init_ui(self):
+        # Create widgets
+        # Source Voltage Control
+        self.source_voltage_label = QLabel("Source Voltage (V)")
+        self.source_voltage_ctrl = QDoubleSpinBox()
+        self.source_voltage_ctrl.setRange(-1000.0, 1000.0)
+        self.source_voltage_ctrl.setSingleStep(0.1)
+        self.source_voltage_ctrl.setValue(0.0)
+
+        # Create grid layout
         self.grid = QGridLayout()
         self.grid.setSpacing(10)
 
-        self.init_controls()
-        self.init_layout()
+        # add widgets to grid
+        self.grid.addWidget(self.source_voltage_label, 0, 0)
+        self.grid.addWidget(self.source_voltage_ctrl, 0, 1)
 
-        self.setLayout(self.grid)
+        # Create central widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        central_widget.setLayout(self.grid)
 
-    def init_controls(self):
-        self.voltage_label = QLabel("Voltage (V)")
-        self.voltage_input = QDoubleSpinBox()
-        self.voltage_input.setRange(-2100.0, 2100.0)
-        self.voltage_input.setSingleStep(0.1)
-        self.voltage_input.setValue(0.0)
+        self.status_bar_logic = StatusBarLogic(self.statusBar())
 
-        self.current_label = QLabel("Current (A)")
-        self.current_input = QDoubleSpinBox()
-        self.current_input.setRange(-2.0e-12, 2.0e-12)
-        self.current_input.setSingleStep(1.0e-13)
-        self.current_input.setValue(0.0)
+        self.status_bar_logic.set_device_status("diconnected")
+        self.status_bar_logic.set_mqtt_status("diconnected")
 
-        self.resistance_label = QLabel("Resistance (Ohm)")
-        self.resistance_input = QDoubleSpinBox()
-        self.resistance_input.setRange(0.0, 2.0e12)
-        self.resistance_input.setSingleStep(1.0e6)
-        self.resistance_input.setValue(0.0)
+        # attach signals
+        self.source_voltage_ctrl.valueChanged.connect(self.on_voltage_input_changed)
 
-        self.measure_button = QPushButton("Measure")
-        self.measure_button.clicked.connect(self.measure)
-
-    def init_layout(self):
-        self.grid.addWidget(self.voltage_label, 0, 0)
-        self.grid.addWidget(self.voltage_input, 0, 1)
-
-        self.grid.addWidget(self.current_label, 1, 0)
-        self.grid.addWidget(self.current_input, 1, 1)
-
-        self.grid.addWidget(self.resistance_label, 2, 0)
-        self.grid.addWidget(self.resistance_input, 2, 1)
-
-        self.grid.addWidget(self.measure_button, 3, 0, 1, 2)
-
-    def measure(self):
-        voltage = self.voltage_input.value()
-        current = self.current_input.value()
-        resistance = self.resistance_input.value()
-
-        payload = {
-            "
+    def on_voltage_input_changed(self, value):
+        self.client_logic.publish_source_voltage(value)
