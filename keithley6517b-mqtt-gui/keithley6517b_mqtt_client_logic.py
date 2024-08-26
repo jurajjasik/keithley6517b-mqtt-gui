@@ -49,8 +49,6 @@ class Keithley6517B_MQTTClientLogic(QObject):
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
 
-        self.start()
-
     def start(self):
         self.client.connect(
             self.config["mqtt_broker"],
