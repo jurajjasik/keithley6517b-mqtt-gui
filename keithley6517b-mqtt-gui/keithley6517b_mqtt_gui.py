@@ -166,8 +166,6 @@ class Keithley6517B_MQTT_GUI(QMainWindow):
         self.grid.addWidget(self.speed_label, 5, 0)
         self.grid.addWidget(self.speed_ctrl, 5, 1)
 
-        
-
         # Create central widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)

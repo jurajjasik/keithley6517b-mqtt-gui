@@ -1,12 +1,13 @@
 # GUI applicaption to control Keithley 6517B electrometer over MQTT.
 
+import logging
 import sys
 
 import PyQt5.QtCore as QtCore
 import PyQt5.QtGui as QtGui
 import PyQt5.QtWidgets as QtWidgets
 import yaml
-import logging
+
 from .keithley6517b_mqtt_gui import Keithley6517B_MQTT_GUI
 
 # Configure logging
