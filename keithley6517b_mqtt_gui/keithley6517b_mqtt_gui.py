@@ -115,14 +115,9 @@ class Keithley6517B_MQTT_GUI(QMainWindow):
         self.current_label = QLabel("000.0000 fA")
         self.current_label.setStyleSheet("font-size: 48pt; font-weight: bold;")
 
-        # Shutdown button
-        self.shutdown_button = QPushButton("Shutdown")
-
-        # Reset button
-        self.reset_button = QPushButton("Reset")
-
-        # Measure button
-        self.measure_button = QPushButton("Measure Continuously")
+        # Measure continously checkbox
+        self.measure_continously_enable = QCheckBox("Measure Continuously")
+        self.measure_continously_enable.setChecked(False)
 
         # Source Voltage Control
         self.source_voltage_label = QLabel("Source Voltage (V)")
@@ -151,9 +146,7 @@ class Keithley6517B_MQTT_GUI(QMainWindow):
         # add widgets to grid
         self.grid.addWidget(self.current_label, 0, 0, 2, 3)
 
-        self.grid.addWidget(self.shutdown_button, 2, 0)
-        self.grid.addWidget(self.reset_button, 2, 1)
-        self.grid.addWidget(self.measure_button, 2, 2)
+        self.grid.addWidget(self.measure_continously_enable, 2, 2)
 
         self.grid.addWidget(self.source_voltage_label, 3, 0)
         self.grid.addWidget(self.source_voltage_ctrl, 3, 1)
@@ -176,13 +169,11 @@ class Keithley6517B_MQTT_GUI(QMainWindow):
         self.status_bar_logic.set_mqtt_status("diconnected")
 
         # attach signals
+        self.measure_continously_enable.stateChanged.connect(self.on_measure_button_clicked)
         self.source_voltage_ctrl.valueChanged.connect(self.on_voltage_input_changed)
         self.source_voltage_enable.stateChanged.connect(
             self.on_source_voltage_enable_changed
         )
-        self.shutdown_button.clicked.connect(self.on_shutdown_button_clicked)
-        self.reset_button.clicked.connect(self.on_reset_button_clicked)
-        self.measure_button.clicked.connect(self.on_measure_button_clicked)
         self.speed_ctrl.currentIndexChanged.connect(self.on_speed_changed)
 
         self.client_logic.device_status_changed.connect(self.on_device_status_changed)
@@ -194,6 +185,9 @@ class Keithley6517B_MQTT_GUI(QMainWindow):
         nplc = speed_to_nplc(self.speed_ctrl.currentText())
         self.client_logic.publish_measure(nplc, 0, True)
 
+    def on_measure_continously_changed(self, state):
+        self.client_logic.publish_measure_continously(state)
+
     def on_voltage_input_changed(self, value):
         self.client_logic.publish_source_voltage(value)
 
@@ -201,12 +195,6 @@ class Keithley6517B_MQTT_GUI(QMainWindow):
         self.client_logic.publish_source_voltage_enable(
             self.source_voltage_enable.isChecked()
         )
-
-    def on_shutdown_button_clicked(self):
-        self.client_logic.publish_shutdown()
-
-    def on_reset_button_clicked(self):
-        self.client_logic.publish_reset()
 
     def on_measure_button_clicked(self):
         self.publish_measure()
