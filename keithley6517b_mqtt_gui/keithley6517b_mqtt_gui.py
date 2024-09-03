@@ -169,7 +169,7 @@ class Keithley6517B_MQTT_GUI(QMainWindow):
         self.status_bar_logic.set_mqtt_status("diconnected")
 
         # attach signals
-        self.measure_continously_enable.stateChanged.connect(self.on_measure_button_clicked)
+        self.measure_continously_enable.stateChanged.connect(self.on_measure_continously_changed)
         self.source_voltage_ctrl.valueChanged.connect(self.on_voltage_input_changed)
         self.source_voltage_enable.stateChanged.connect(
             self.on_source_voltage_enable_changed
