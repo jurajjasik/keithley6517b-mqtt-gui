@@ -137,8 +137,7 @@ class Keithley6517B_MQTT_GUI(QMainWindow):
 
         # Current range control
         self.current_range_label = QLabel("Current Range (A)")
-        self.current_range_ctrl = QComboBox()
-        self.current_range_ctrl.addItems(["Auto", "1p", "1n", "1u", "1m"])
+        self.current_range_value = QLabel()
 
         # Speed control
         self.speed_label = QLabel("Speed")
@@ -161,7 +160,7 @@ class Keithley6517B_MQTT_GUI(QMainWindow):
         self.grid.addWidget(self.source_voltage_enable, 3, 2)
 
         self.grid.addWidget(self.current_range_label, 4, 0)
-        self.grid.addWidget(self.current_range_ctrl, 4, 1)
+        self.grid.addWidget(self.current_range_value, 4, 1)
 
         self.grid.addWidget(self.speed_label, 5, 0)
         self.grid.addWidget(self.speed_ctrl, 5, 1)
@@ -184,9 +183,6 @@ class Keithley6517B_MQTT_GUI(QMainWindow):
         self.shutdown_button.clicked.connect(self.on_shutdown_button_clicked)
         self.reset_button.clicked.connect(self.on_reset_button_clicked)
         self.measure_button.clicked.connect(self.on_measure_button_clicked)
-        self.current_range_ctrl.currentIndexChanged.connect(
-            self.on_current_range_changed
-        )
         self.speed_ctrl.currentIndexChanged.connect(self.on_speed_changed)
 
         self.client_logic.device_status_changed.connect(self.on_device_status_changed)
@@ -196,10 +192,7 @@ class Keithley6517B_MQTT_GUI(QMainWindow):
 
     def publish_measure(self):
         nplc = speed_to_nplc(self.speed_ctrl.currentText())
-        auto_range, current_range = text_to_current_range(
-            self.current_range_ctrl.currentText()
-        )
-        self.client_logic.publish_measure(nplc, current_range, auto_range)
+        self.client_logic.publish_measure(nplc, 0, True)
 
     def on_voltage_input_changed(self, value):
         self.client_logic.publish_source_voltage(value)
@@ -231,7 +224,10 @@ class Keithley6517B_MQTT_GUI(QMainWindow):
         self.status_bar_logic.set_mqtt_status(status)
 
     def on_measured_current_changed(self, current):
-        current_str = str(EngNumber(current, precision=4))
+        try:
+            current_str = str(EngNumber(current, precision=4))
+        except:
+            current_str = str(current)
         self.current_label.setText(current_str)
 
     def on_state_changed(self, state):
@@ -255,13 +251,7 @@ class Keithley6517B_MQTT_GUI(QMainWindow):
 
         if "current_range" in state:
             # disable signal to prevent infinite loop
-            self.current_range_ctrl.currentIndexChanged.disconnect(
-                self.on_current_range_changed
-            )
-            self.current_range_ctrl.setCurrentText(state["current_range"])
-            self.current_range_ctrl.currentIndexChanged.connect(
-                self.on_current_range_changed
-            )
+            self.current_range_value.setText(str(EngNumber(state["current_range"])))
 
         if "nplc" in state:
             nplc = state["nplc"]
@@ -282,14 +272,8 @@ class Keithley6517B_MQTT_GUI(QMainWindow):
         if "auto_range" in state:
             auto_range = state["auto_range"]
             # disable signal to prevent infinite loop
-            self.current_range_ctrl.currentIndexChanged.disconnect(
-                self.on_current_range_changed
-            )
-            self.current_range_ctrl.setCurrentText(
+            self.current_range_value.setText(
                 "Auto"
                 if auto_range
-                else str(state["current_range"]) if "current_range" in state else "Auto"
-            )
-            self.current_range_ctrl.currentIndexChanged.connect(
-                self.on_current_range_changed
+                else str(EngNumber(state["current_range"])) if "current_range" in state else "Auto"
             )
