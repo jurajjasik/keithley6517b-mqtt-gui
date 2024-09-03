@@ -140,6 +140,15 @@ class Keithley6517B_MQTTClientLogic(QObject):
             payload=json.dumps({"value": voltage}),
         )
 
+
+    @client_connected
+    @log_func
+    def publish_measure_continously(self, state):
+        self.client.publish(
+            topic=f"{self.topic_base}/cmnd/{self.device_name}/measure_continously",
+            payload=json.dumps({"value": state}),
+        )
+
     @client_connected
     @log_func
     def publish_source_voltage_enable(self, enable):
