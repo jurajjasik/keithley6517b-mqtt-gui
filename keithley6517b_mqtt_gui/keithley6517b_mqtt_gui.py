@@ -265,3 +265,13 @@ class Keithley6517B_MQTT_GUI(QMainWindow):
                 if auto_range
                 else str(EngNumber(state["current_range"])) if "current_range" in state else "Auto"
             )
+
+        if "measure_continuously" in state:
+            # disable signal to prevent infinite loop
+            self.measure_continously_enable.stateChanged.disconnect(
+                self.on_measure_continously_changed
+            )
+            self.measure_continously_enable.setChecked(state["measure_continuously"])
+            self.measure_continously_enable.stateChanged.connect(
+                self.on_measure_continously_changed
+            )

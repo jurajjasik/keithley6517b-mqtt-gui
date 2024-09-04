@@ -88,6 +88,8 @@ class Keithley6517B_MQTTClientLogic(QObject):
             self.handle_source_voltage(payload)
         elif topic.endswith("source_enable"):
             self.handle_source_voltage_enable(payload)
+        elif topic.endswith("measure_continously"):
+            self.handle_measure_continously(payload)
 
     def handle_device_connected(self, message):
         logger.info("Device connected")
@@ -131,6 +133,15 @@ class Keithley6517B_MQTTClientLogic(QObject):
                 self.signal_state.emit({"source_voltage_enable": enable})
             except Exception as e:
                 logger.warning(f"Error handling source voltage enable message: {e}")
+
+    def handle_measure_continously(self, payload):
+        if "value" in payload:
+            try:
+                state = bool(payload["value"])
+                logger.debug(f"Measure continously: {state}")
+                self.signal_state.emit({"measure_continously": state})
+            except Exception as e:
+                logger.warning(f"Error handling measure continously message: {e}")
 
     @client_connected
     @log_func
